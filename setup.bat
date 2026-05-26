@@ -41,6 +41,14 @@ echo [OK] DevBot image found.
 :: -----------------------------------------------------------
 set "ENV_FILE=%~dp0.env"
 
+:: Auto-rename if downloaded with OneDrive filename
+if not exist "!ENV_FILE!" (
+    if exist "%~dp0devbot-env-for-onedrive.env" (
+        rename "%~dp0devbot-env-for-onedrive.env" ".env"
+        echo [OK] Renamed devbot-env-for-onedrive.env to .env
+    )
+)
+
 if exist "!ENV_FILE!" (
     echo [OK] Configuration found.
     echo.
