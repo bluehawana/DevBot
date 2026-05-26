@@ -57,7 +57,7 @@ echo   You need:
 echo     1. Azure DevOps PAT (Personal Access Token)
 echo.
 echo        HOW TO CREATE:
-echo        a) Go to: https://dev.azure.com/VolvoGroup-CPA-SWnD/_usersSettings/tokens
+echo        a) Go to your Azure DevOps org: _usersSettings/tokens
 echo        b) Click "New Token"
 echo        c) Name: DevBot (or anything you like)
 echo        d) Expiration: 90 days (or custom)
@@ -68,10 +68,9 @@ echo        f) Click "Create" and COPY the token immediately
 echo           (you cannot see it again!)
 echo.
 echo     2. Azure DevOps Org URL (org only, NOT project!)
-echo        Example: https://dev.azure.com/VolvoGroup-CPA-SWnD
+echo        Example: https://dev.azure.com/YourOrg
 echo.
-echo     3. Ollama server URL
-echo        Default: http://10.222.19.229:11434
+echo     3. Ollama server URL (ask your team lead)
 echo.
 
 set /p ADO_PAT="Azure DevOps PAT: "
@@ -81,11 +80,19 @@ if "!ADO_PAT!"=="" (
     exit /b 1
 )
 
-set /p ADO_ORG="Azure DevOps Org URL (Enter for default): "
-if "!ADO_ORG!"=="" set ADO_ORG=https://dev.azure.com/VolvoGroup-CPA-SWnD
+set /p ADO_ORG="Azure DevOps Org URL: "
+if "!ADO_ORG!"=="" (
+    echo [ERROR] Org URL is required.
+    pause
+    exit /b 1
+)
 
-set /p OLLAMA_URL="Ollama server URL (Enter for default): "
-if "!OLLAMA_URL!"=="" set OLLAMA_URL=http://10.222.19.229:11434
+set /p OLLAMA_URL="Ollama server URL: "
+if "!OLLAMA_URL!"=="" (
+    echo [ERROR] Ollama URL is required. Ask your team lead for the URL.
+    pause
+    exit /b 1
+)
 
 set /p ADO_PROJECT="Azure DevOps Project (optional, Enter to skip): "
 
