@@ -28,11 +28,12 @@ if %errorlevel% neq 0 (
     echo.
     echo [INFO] Pulling DevBot image from Docker Hub...
     docker pull hongzhili40526/devbot:latest
-    if %errorlevel% neq 0 (
-        echo [ERROR] Pull failed. Check your internet connection.
-        pause
-        exit /b 1
-    )
+)
+docker image inspect hongzhili40526/devbot:latest >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Pull failed. Check your internet connection.
+    pause
+    exit /b 1
 )
 echo [OK] DevBot image found.
 
@@ -42,11 +43,9 @@ echo [OK] DevBot image found.
 set "ENV_FILE=%~dp0.env"
 
 :: Auto-rename if downloaded with OneDrive filename
-if not exist "!ENV_FILE!" (
-    if exist "%~dp0devbot-env-for-onedrive.env" (
-        rename "%~dp0devbot-env-for-onedrive.env" ".env"
-        echo [OK] Renamed devbot-env-for-onedrive.env to .env
-    )
+if not exist "!ENV_FILE!" if exist "%~dp0devbot-env-for-onedrive.env" (
+    move "%~dp0devbot-env-for-onedrive.env" "!ENV_FILE!" >nul
+    echo [OK] Renamed devbot-env-for-onedrive.env to .env
 )
 
 if exist "!ENV_FILE!" (
