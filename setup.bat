@@ -41,10 +41,14 @@ if %errorlevel% neq 0 (
         echo.
         echo [INFO] Loading DevBot image from devbot-image.tar...
         docker load -i "%~dp0devbot-image.tar"
+        docker image inspect ghcr.io/harvad-li_volvo/devbot:latest >nul 2>&1
         if %errorlevel% neq 0 (
-            echo [ERROR] Failed to load image from .tar file.
-            pause
-            exit /b 1
+            docker image inspect devbot:latest >nul 2>&1
+            if %errorlevel% neq 0 (
+                echo [ERROR] Failed to load image from .tar file.
+                pause
+                exit /b 1
+            )
         )
     )
 )
