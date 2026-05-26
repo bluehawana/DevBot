@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-title DevBot Configuration
+title DevBot Setup
 
 echo ============================================================
-echo   DevBot - Developer Setup
+echo   DevBot - AI Developer Assistant Setup
 echo ============================================================
 echo.
 
@@ -37,40 +37,57 @@ if %errorlevel% neq 0 (
 echo [OK] DevBot image found.
 
 :: -----------------------------------------------------------
-:: Step 3: Load existing config or prompt for new
+:: Step 3: Check .env exists (pre-configured from OneDrive)
 :: -----------------------------------------------------------
 set "ENV_FILE=%~dp0.env"
 
 if exist "!ENV_FILE!" (
+    echo [OK] Configuration found.
     echo.
-    echo Found existing config: !ENV_FILE!
-    set /p REUSE="Use existing config? (Y/n): "
-    if /i "!REUSE!" neq "n" goto :run
+    :: Check if PAT is already set
+    findstr /C:"AZURE_DEVOPS_PAT=" "!ENV_FILE!" >nul 2>&1
+    if %errorlevel% equ 0 (
+        set /p REUSE="Existing config with PAT found. Use it? (Y/n): "
+        if /i "!REUSE!" neq "n" goto :run
+    ) else (
+        echo   .env found but no PAT yet. You need to add your personal token.
+        goto :addpat
+    )
 )
+
+if not exist "!ENV_FILE!" (
+    echo.
+    echo [ERROR] .env not found in this folder.
+    echo.
+    echo   Download from OneDrive (open in browser - requires corporate login):
+    echo   Save as ".env" in this folder, then run setup.bat again.
+    echo.
+    echo   The .env file contains Ollama server URLs and model config.
+    echo   You will then be prompted for your personal Azure DevOps PAT.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: -----------------------------------------------------------
+:: Step 4: Add personal PAT to .env
+:: -----------------------------------------------------------
+:addpat
 
 echo.
 echo -----------------------------------------------------------
-echo   Enter your credentials
+echo   Add your Azure DevOps PAT
 echo -----------------------------------------------------------
 echo.
-echo   You need:
-echo     1. Azure DevOps PAT (Personal Access Token)
-echo.
-echo        HOW TO CREATE:
-echo        a) Go to your Azure DevOps org: _usersSettings/tokens
-echo        b) Click "New Token"
-echo        c) Name: DevBot (or anything you like)
-echo        d) Expiration: 90 days (or custom)
-echo        e) Scopes - select ONLY these:
-echo             Code:                 Read
-echo             Pull Request Threads: Read ^& Write
-echo        f) Click "Create" and COPY the token immediately
-echo           (you cannot see it again!)
-echo.
-echo     2. Azure DevOps Org URL (org only, NOT project!)
-echo        Example: https://dev.azure.com/YourOrg
-echo.
-echo     3. Ollama server URL (ask your team lead)
+echo   HOW TO CREATE:
+echo     a) Go to your Azure DevOps org settings: _usersSettings/tokens
+echo     b) Click "New Token"
+echo     c) Name: DevBot
+echo     d) Expiration: 90 days
+echo     e) Scopes:
+echo          Code:                 Read
+echo          Pull Request Threads: Read ^& Write
+echo     f) Click "Create" and COPY immediately
 echo.
 
 set /p ADO_PAT="Azure DevOps PAT: "
@@ -80,35 +97,13 @@ if "!ADO_PAT!"=="" (
     exit /b 1
 )
 
-set /p ADO_ORG="Azure DevOps Org URL: "
-if "!ADO_ORG!"=="" (
-    echo [ERROR] Org URL is required.
-    pause
-    exit /b 1
-)
-
-set /p OLLAMA_URL="Ollama server URL: "
-if "!OLLAMA_URL!"=="" (
-    echo [ERROR] Ollama URL is required. Ask your team lead for the URL.
-    pause
-    exit /b 1
-)
-
-set /p ADO_PROJECT="Azure DevOps Project (optional, Enter to skip): "
-
-:: Write .env file
-echo AZURE_DEVOPS_PAT=!ADO_PAT!> "!ENV_FILE!"
-echo AZURE_DEVOPS_ORG_URL=!ADO_ORG!>> "!ENV_FILE!"
-echo OLLAMA_PRIMARY_URL=!OLLAMA_URL!>> "!ENV_FILE!"
-if not "!ADO_PROJECT!"=="" (
-    echo AZURE_DEVOPS_PROJECT=!ADO_PROJECT!>> "!ENV_FILE!"
-)
+:: Append PAT to .env
+echo AZURE_DEVOPS_PAT=!ADO_PAT!>> "!ENV_FILE!"
 echo.
-echo [OK] Config saved to !ENV_FILE!
-echo     (This file is git-ignored and stays on your machine only.)
+echo [OK] PAT saved to .env (local only, never shared).
 
 :: -----------------------------------------------------------
-:: Step 4: Run the container
+:: Step 5: Run the container
 :: -----------------------------------------------------------
 :run
 
@@ -121,9 +116,6 @@ echo ============================================================
 docker stop devbot >nul 2>&1
 docker rm devbot >nul 2>&1
 
-:: Determine which image name to use
-set IMAGE=hongzhili40526/devbot:latest
-
 :: Run with env file
 docker run -d --name devbot ^
     -p 3978:3978 ^
@@ -131,7 +123,7 @@ docker run -d --name devbot ^
     --cpus 2 ^
     --restart unless-stopped ^
     --env-file "%~dp0.env" ^
-    %IMAGE%
+    hongzhili40526/devbot:latest
 
 if %errorlevel% neq 0 (
     echo.
