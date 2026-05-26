@@ -21,35 +21,17 @@ if %errorlevel% neq 0 (
 echo [OK] Docker is running.
 
 :: -----------------------------------------------------------
-:: Step 2: Check if devbot image exists, download if not
+:: Step 2: Pull image from Docker Hub (no login needed)
 :: -----------------------------------------------------------
-docker image inspect ghcr.io/harvad-li_volvo/devbot:latest >nul 2>&1
+docker image inspect hongzhili40526/devbot:latest >nul 2>&1
 if %errorlevel% neq 0 (
-    docker image inspect devbot:latest >nul 2>&1
+    echo.
+    echo [INFO] Pulling DevBot image from Docker Hub...
+    docker pull hongzhili40526/devbot:latest
     if %errorlevel% neq 0 (
-        if not exist "%~dp0devbot-image.tar" (
-            echo.
-            echo [INFO] Downloading DevBot image...
-            curl --ssl-no-revoke -L -o "%~dp0devbot-image.tar" "https://github.com/bluehawana/DevBot/raw/main/devbot-image.tar"
-            if %errorlevel% neq 0 (
-                echo [ERROR] Download failed. Download manually from:
-                echo         https://github.com/bluehawana/DevBot
-                pause
-                exit /b 1
-            )
-        )
-        echo.
-        echo [INFO] Loading DevBot image from devbot-image.tar...
-        docker load -i "%~dp0devbot-image.tar"
-        docker image inspect ghcr.io/harvad-li_volvo/devbot:latest >nul 2>&1
-        if %errorlevel% neq 0 (
-            docker image inspect devbot:latest >nul 2>&1
-            if %errorlevel% neq 0 (
-                echo [ERROR] Failed to load image from .tar file.
-                pause
-                exit /b 1
-            )
-        )
+        echo [ERROR] Pull failed. Check your internet connection.
+        pause
+        exit /b 1
     )
 )
 echo [OK] DevBot image found.
@@ -133,9 +115,7 @@ docker stop devbot >nul 2>&1
 docker rm devbot >nul 2>&1
 
 :: Determine which image name to use
-set IMAGE=ghcr.io/harvad-li_volvo/devbot:latest
-docker image inspect %IMAGE% >nul 2>&1
-if %errorlevel% neq 0 set IMAGE=devbot:latest
+set IMAGE=hongzhili40526/devbot:latest
 
 :: Run with env file
 docker run -d --name devbot ^
