@@ -21,53 +21,35 @@ if %errorlevel% neq 0 (
 echo [OK] Docker is running.
 
 :: -----------------------------------------------------------
-:: Step 2: Pull image from Docker Hub (no login needed)
+:: Step 2: Pull latest image from Docker Hub (always pull fresh)
 :: -----------------------------------------------------------
-docker image inspect hongzhili40526/devbot:latest >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo [INFO] Pulling DevBot image from Docker Hub...
-    docker pull hongzhili40526/devbot:latest
-)
-docker image inspect hongzhili40526/devbot:latest >nul 2>&1
+echo.
+echo [INFO] Cleaning up old images and containers...
+docker stop devbot >nul 2>&1
+docker rm -f devbot >nul 2>&1
+docker rmi -f hongzhili40526/devbot:latest >nul 2>&1
+docker image prune -f >nul 2>&1
+echo [INFO] Pulling fresh image from Docker Hub...
+docker pull hongzhili40526/devbot:latest
 if %errorlevel% neq 0 (
     echo [ERROR] Pull failed. Check your internet connection.
     pause
     exit /b 1
 )
-echo [OK] DevBot image found.
+echo [OK] DevBot image ready (latest version).
 
 :: -----------------------------------------------------------
-:: Step 3: Check .env exists (pre-configured from OneDrive)
+:: Step 3: Check .env exists
 :: -----------------------------------------------------------
 set "ENV_FILE=%~dp0.env"
-
-:: Auto-rename if downloaded with OneDrive filename
-if not exist "!ENV_FILE!" if exist "%~dp0devbot-env-for-onedrive.env" (
-    move "%~dp0devbot-env-for-onedrive.env" "!ENV_FILE!" >nul
-    echo [OK] Renamed devbot-env-for-onedrive.env to .env
-)
-
-if exist "!ENV_FILE!" (
-    echo [OK] Configuration found.
-    echo.
-    :: Check if PAT is already set
-    findstr /C:"AZURE_DEVOPS_PAT=" "!ENV_FILE!" >nul 2>&1
-    if %errorlevel% equ 0 (
-        set /p REUSE="Existing config with PAT found. Use it? (Y/n): "
-        if /i "!REUSE!" neq "n" goto :run
-    ) else (
-        echo   .env found but no PAT yet. You need to add your personal token.
-        goto :addpat
-    )
-)
 
 if not exist "!ENV_FILE!" (
     echo.
     echo [ERROR] .env not found in this folder.
     echo.
-    echo   Download from OneDrive (open in browser - requires corporate login):
-    echo   Save as ".env" in this folder, then run setup.bat again.
+    echo   Create a file called .env in this folder.
+    echo   Copy the content from the Teams chat and paste it.
+    echo   Save as UTF-8 in Notepad.
     echo.
     echo   The .env file contains Ollama server URLs and model config.
     echo   You will then be prompted for your personal Azure DevOps PAT.
@@ -75,11 +57,16 @@ if not exist "!ENV_FILE!" (
     pause
     exit /b 1
 )
+echo [OK] Configuration found.
 
 :: -----------------------------------------------------------
-:: Step 4: Add personal PAT to .env
+:: Step 4: Check PAT in .env or prompt for it
 :: -----------------------------------------------------------
-:addpat
+findstr /C:"AZURE_DEVOPS_PAT=" "!ENV_FILE!" >nul 2>&1
+if %errorlevel% equ 0 (
+    set /p REUSE="Existing config with PAT found. Use it? (Y/n): "
+    if /i "!REUSE!" neq "n" goto :run
+)
 
 echo.
 echo -----------------------------------------------------------
@@ -119,10 +106,6 @@ echo ============================================================
 echo   Starting DevBot...
 echo ============================================================
 
-:: Stop existing container
-docker stop devbot >nul 2>&1
-docker rm devbot >nul 2>&1
-
 :: Run with env file
 docker run -d --name devbot ^
     -p 3978:3978 ^
@@ -141,7 +124,16 @@ if %errorlevel% neq 0 (
 
 :: Wait and check health
 echo Waiting for DevBot...
-timeout /t 4 /nobreak >nul
+ping -n 6 127.0.0.1 >nul 2>nul
+
+:: Check health endpoint
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:3978/health' -UseBasicParsing -TimeoutSec 5; if ($r.Content -match 'healthy') { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [OK] Health check passed - DevBot is responding.
+) else (
+    echo [WARN] Health check inconclusive - app may still be starting.
+    echo        Try opening http://localhost:3978/ in your browser.
+)
 
 echo.
 echo ============================================================
